@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Job Matcher</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 2rem; }
+        h1 { text-align: center; font-size: 2.5rem; color: #a78bfa; margin-bottom: 0.5rem; }
+        p.sub { text-align: center; color: #94a3b8; margin-bottom: 2rem; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 1100px; margin: 0 auto 1.5rem; }
+        textarea { width: 100%; height: 280px; background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1rem; color: #e2e8f0; font-size: 0.9rem; resize: vertical; outline: none; }
+        textarea:focus { border-color: #a78bfa; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: #a78bfa; }
+        .btn { display: block; margin: 0 auto 2rem; background: #7c3aed; color: white; border: none; padding: 1rem 3rem; border-radius: 12px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .btn:hover { background: #6d28d9; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        #result { max-width: 1100px; margin: 0 auto; display: none; }
+        .score-box { background: #1e293b; border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 1.5rem; }
+        .score { font-size: 5rem; font-weight: 800; }
+        .score.high { color: #34d399; }
+        .score.mid { color: #fbbf24; }
+        .score.low { color: #f87171; }
+        .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+        .card { background: #1e293b; border-radius: 12px; padding: 1.5rem; }
+        .card h3 { margin-bottom: 1rem; color: #a78bfa; }
+        .tag { display: inline-block; background: #312e81; color: #a5b4fc; padding: 0.3rem 0.7rem; border-radius: 999px; font-size: 0.8rem; margin: 0.2rem; }
+        .tag.missing { background: #450a0a; color: #fca5a5; }
+        .suggestion { background: #0f2942; border-left: 3px solid #a78bfa; padding: 0.8rem 1rem; border-radius: 0 8px 8px 0; margin-bottom: 0.8rem; font-size: 0.9rem; }
+        .summary-box { background: #1e293b; border-radius: 12px; padding: 1.5rem; }
+        .summary-box p { color: #94a3b8; line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <h1>Resume Matcher</h1>
+    <p class="sub">Paste your resume and job description to get an AI match score</p>
+
+    <div class="grid">
+        <div>
+            <label>Your Resume</label>
+            <textarea id="resume" placeholder="Paste your resume text here..."></textarea>
+        </div>
+        <div>
+            <label>Job Description</label>
+            <textarea id="job" placeholder="Paste the job description here..."></textarea>
+        </div>
+    </div>
+
+    <button class="btn" onclick="analyze()" id="btn">Analyze Match</button>
+
+    <div id="result">
+        <div class="score-box">
+            <div id="score" class="score"></div>
+            <p style="color:#94a3b8; margin-top:0.5rem">Match Score</p>
+            <p id="summary" style="margin-top:1rem; color:#cbd5e1"></p>
+        </div>
+        <div class="cards">
+            <div class="card">
+                <h3>Matching Keywords</h3>
+                <div id="matching"></div>
+            </div>
+            <div class="card">
+                <h3>Missing Keywords</h3>
+                <div id="missing"></div>
+            </div>
+        </div>
+        <div class="card" style="margin-bottom:1rem">
+            <h3>Suggestions</h3>
+            <div id="suggestions"></div>
+        </div>
+    </div>
+
+    <script>
+        async function analyze() {
+            const resume = document.getElementById('resume').value
+            const job = document.getElementById('job').value
+            if (!resume || !job) return alert('Please fill both fields!')
+
+            const btn = document.getElementById('btn')
+            btn.disabled = true
+            btn.textContent = 'Analyzing...'
+
+            const res = await fetch('/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ resume, job })
+            })
+            const data = await res.json()
+
+            const score = data.score
+            const scoreEl = document.getElementById('score')
+            scoreEl.textContent = score + '%'
+            scoreEl.className = 'score ' + (score >= 70 ? 'high' : score >= 40 ? 'mid' : 'low')
+
+            document.getElementById('summary').textContent = data.summary
+
+            document.getElementById('matching').innerHTML = data.matching_keywords.map(k => `<span class="tag">${k}</span>`).join('')
+            document.getElementById('missing').innerHTML = data.missing_keywords.map(k => `<span class="tag missing">${k}</span>`).join('')
+            document.getElementById('suggestions').innerHTML = data.suggestions.map(s => `<div class="suggestion">${s}</div>`).join('')
+
+            document.getElementById('result').style.display = 'block'
+            btn.disabled = false
+            btn.textContent = 'Analyze Match'
+        }
+    </script>
+</body>
+</html>
